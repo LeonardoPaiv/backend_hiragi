@@ -14,6 +14,7 @@ class DAO:
        self.tb_arquivo = db.classes.tb_arquivo
        self.tb_atendimento = db.classes.tb_atendimento
        self.tb_ocorrencia = db.classes.tb_ocorrencia
+       self.tb_pessoa = db.classes.tb_pessoa
        self.tb_status_ocorrencia = db.classes.tb_status_ocorrencia
        self.tb_tipo_ocorrencia = db.classes.tb_tipo_ocorrencia
 
@@ -36,7 +37,6 @@ class DAO:
 
    def readById(self, id):
        exp = f"self.tabela.{self.idt} == {id}"
-       print(exp)
        obj = self.ses.query(self.tabela).filter(eval(exp)).first()
        return obj
 
