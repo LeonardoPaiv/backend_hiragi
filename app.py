@@ -1,12 +1,13 @@
-import json
-from flask import Flask, request, jsonify, redirect
 from model.dao import DAO
+from flask import Flask, request, jsonify, redirect
 from flask_login import current_user, LoginManager, login_user, logout_user, login_required, UserMixin
+from flask_cors import CORS
 import hashlib
 import re
 
 app = Flask(__name__)
 app.secret_key = 'SubiNumPeDePeraPraArrancarUmaPera'
+CORS(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
