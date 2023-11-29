@@ -4,9 +4,12 @@ from flask_login import current_user, LoginManager, login_user, logout_user, log
 from flask_cors import CORS
 import hashlib
 import re
+import datetime
+import os
 
 app = Flask(__name__)
 app.secret_key = 'SubiNumPeDePeraPraArrancarUmaPera'
+app.config['UPLOAD_FOLDER'] = './uploads'
 CORS(app)
 
 login_manager = LoginManager()
@@ -18,6 +21,7 @@ class User(UserMixin):
    nme_pessoa = ''
    cpf_pessoa = ''
    email_pessoa = ''
+   tipo_pessoa = -1
 
    def to_json(self):
        return {
@@ -38,7 +42,8 @@ def load_user(user_id):
        usr.idt_pessoa = lista[0].idt_pessoa
        usr.nme_pessoa = str(lista[0].nme_pessoa)
        usr.cpf_pessoa = str(lista[0].cpf_pessoa)
-       usr.email_pessoa = str(lista[0].email_guardiao)
+       usr.email_pessoa = str(lista[0].email_pessoa)
+       usr.tipo_pessoa = lista[0].tipo_pessoa
        return usr
    else:
        return None
@@ -47,11 +52,11 @@ def load_user(user_id):
 @app.route("/")
 def index():
     if current_user.is_authenticated: # type: ignore
-        return redirect("/api/v0/consultas")
+        return redirect("/consultas")
     else:
-        return redirect("/api/v0/login")
+        return redirect("/login")
 
-@app.route("/api/v0/login", methods=['GET'])
+@app.route("/login", methods=['GET'])
 def login():
     email = request.args.get('email')
     senha = request.args.get('senha')
@@ -66,41 +71,46 @@ def login():
         usr.idt_pessoa = lista[0].idt_pessoa
         usr.nme_pessoa = str(lista[0].nme_pessoa)
         usr.cpf_pessoa = str(lista[0].cpf_pessoa)
-        usr.email_pessoa = str(lista[0].email_guardiao)
+        usr.email_pessoa = str(lista[0].email_pessoa)
+        usr.tipo_pessoa = lista[0].tipo_pessoa
         login_user(usr, remember=True)
 
         if current_user.is_authenticated: # type: ignore
-            return redirect("/api/v0/consultas")
+            return jsonify("usuario encontrado")
         else:
-            return jsonify("carlos")
+            return jsonify("usuario nao encontrado")
     else:
-        return jsonify("carlos")
+        return jsonify("login ou senha incorretos")
 
-@app.route("/api/v0/cadastrar", methods=['POST'])
-def cadastrar():
+@app.route("/cadastro", methods=['PUT'])
+def cadastro():
 
-    nome = request.form.get("nome")
+    dao = DAO("tb_pessoa")
 
-    cpf = request.form.get("cpf")
+    nome = request.args.get("nome")
+
+    cpf = request.args.get("cpf")
     if len(str(cpf)) != 11:
         return jsonify("Cpf invalido. Padrao aceito: XXXXXXXXXXX")
+    if len(dao.readBy("cpf_pessoa", "==", cpf)) != 0:
+        return jsonify("cpf ja utilizado")
 
-    email = request.form.get("email")
+    email = request.args.get("email")
     if not re.match(r".+@.+\..+", str(email)):
         return jsonify("Email invalido. Padrão aceito: x@y.z")
     
-    senha = request.form.get("senha")
+    senha = request.args.get("senha")
     if len(str(senha)) < 4:
         return jsonify("Senha minima de 4 caracteres")
     
-    senha_confirmada = request.form.get("senha_confirmada")
+    senha_confirmada = request.args.get("senha_confirmada")
 
-    tipo = request.form.get("tipo")
+    tipo = request.args.get("tipo")
 
     if senha == senha_confirmada:
         compilacao = hashlib.sha1(str(senha).encode("utf-8")).hexdigest()
         dao = DAO("tb_pessoa")
-        pessoa = dao.tb_pessoa
+        pessoa = dao.tb_pessoa()
         pessoa.nme_pessoa = nome
         pessoa.cpf_pessoa = cpf
         pessoa.email_pessoa = email
@@ -109,23 +119,90 @@ def cadastrar():
         dao.create(pessoa)
         return jsonify("Deu bom")
     else: 
-        return jsonify("Deu ruim")
+        return jsonify("Senhas nao coincidem.")
     
-@app.route("/api/v0/confirmaocao")
+@app.route("/confirmacao")
 def confirmacao():
-    return jsonify("Boa")
+    dao = DAO("tb_tipo_ocorrencia")
+    lista = dao.readAll()
+    for i in lista:
+        print(i.nme_tipo_ocorrencia)
+    return jsonify("Confirmado")
 
-@app.route('/api/v0/logout', methods=['GET'])
+@app.route('/logout', methods=['GET'])
 def logout():
    logout_user()
    return jsonify(**{'result': 200,
                      'data': {'message': 'logout success'}})
 
-@app.route("/api/v0/consultas", methods=['GET'])
+@app.route("/consultas", methods=['GET'])
 @login_required
 def consultas():
-    dao = DAO("tb_ocorrencias")
-    return jsonify("bakugan")
+    dao = DAO("tb_ocorrencia")
+    usuario = current_user
+    if usuario.tipo_pessoa == 1: # type: ignore
+        lista = dao.readAll()
+        json = []
+        for i in lista:
+            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "Tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+        return jsonify(json)
+    else:
+        lista = dao.readBy("cod_pessoa", "==", usuario.idt_pessoa) # type: ignore
+        json = []
+        for i in lista:
+            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "Tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+        return jsonify(json)
 
-app.run(debug=True)
+@app.route("/criar_ocorrencia", methods=['PUT'])
+@login_required
+def criar_ocorrencia():
 
+    daoOcorrecia = DAO("tb_ocorrencia")
+    ocorrencia = daoOcorrecia.tb_ocorrencia()
+
+    daoTipo = DAO("tb_tipo_ocorrencia")
+    lista = daoTipo.readAll()
+    tipos = []
+    for i in lista:
+        tipos.append(i.nme_tipo_ocorrencia)
+
+    # ocorrencia.data_ocorrencia = request.args.get("data")
+    # if not re.match(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})", str(ocorrencia.data_ocorrencia)):
+    #     return jsonify("Data invalida. Padrão aceito: AAAA-MM-DD HH:MM:SS")
+
+    ocorrencia.nme_ocorrencia = request.args.get("nome")
+
+    ocorrencia.data_ocorrencia = datetime.datetime.now()
+    
+    ocorrencia.cep_ocorrencia = request.args.get("cep")
+    if len(str(ocorrencia.cep_ocorrencia)) != 8:
+        return jsonify("Cep invalido. Padrao aceito: XXXXXXXX")
+
+    ocorrencia.dsc_ocorrencia = request.args.get("descricao")
+
+    tipo = request.args.get("tipo")
+    if tipo not in tipos:
+        return jsonify(f"Tipos aceitos: {tipos}")
+    
+    ocorrencia.cod_tipo_ocorrencia = daoTipo.readByNme(tipo)[0].idt_tipo_ocorrencia
+    ocorrencia.cod_pessoa = current_user.idt_pessoa # type: ignore
+    ocorrencia.cod_status_ocorrencia = 1
+    
+    daoOcorrecia.create(ocorrencia)
+
+    return jsonify({
+        "nome": ocorrencia.nme_ocorrencia,
+        "data": ocorrencia.data_ocorrencia,
+        "cep":  ocorrencia.cep_ocorrencia,
+        "descricao": ocorrencia.dsc_ocorrencia,
+        "tipo": tipo,
+        "pessoa": ocorrencia.cod_pessoa,
+        "status": ocorrencia.cod_status_ocorrencia
+    })
+
+
+    # file = request.files["file"]
+    # file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename)) # type: ignore
+    # return 'File uploaded successfully'
+
+app.run(debug=True, port=5000)

@@ -56,6 +56,10 @@ class DAO:
 
        lista = self.ses.query(self.tabela).filter(eval(exp)).all()
        return lista
+   
+   def readAllJoin(self, tab):
+       lista = self.ses.query(self.tabela).join(tab).all()
+       return lista
 
    def update(self):
        self.ses.commit()
