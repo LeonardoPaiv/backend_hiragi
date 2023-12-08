@@ -6,7 +6,7 @@ class DAO:
 
    def __init__(self, tab):
        # Ligação com o esquema de banco de dados
-       engine = create_engine("mysql+mysqlconnector://root:uniceub@localhost/realidade?charset=utf8mb4")
+       engine = create_engine("mysql+mysqlconnector://root:uniceub@localhost/real?charset=utf8mb4")
 
        # Mapeamento Objeto Relacional com o SQLAlchemy
        db = automap_base()
@@ -37,12 +37,12 @@ class DAO:
 
    def readById(self, id):
        exp = f"self.tabela.{self.idt} == {id}"
-       obj = self.ses.query(self.tabela).filter(eval(exp)).first()
+       obj = self.ses.query(self.tabela).filter(eval(exp)).first() # type: ignore
        return obj
 
    def readByNme(self, nm):
        exp = "self.tabela." + self.nme + ".ilike('%' + nm + '%')"
-       lista = self.ses.query(self.tabela).filter(eval(exp)).all()
+       lista = self.ses.query(self.tabela).filter(eval(exp)).all() # type: ignore
        return lista
 
    def readBy(self, campo, oper, valor):
@@ -54,11 +54,11 @@ class DAO:
        else:
            exp = "self.tabela." + campo + oper + "valor"
 
-       lista = self.ses.query(self.tabela).filter(eval(exp)).all()
+       lista = self.ses.query(self.tabela).filter(eval(exp)).all() # type: ignore
        return lista
    
    def readAllJoin(self, tab):
-       lista = self.ses.query(self.tabela).join(tab).all()
+       lista = self.ses.query(self.tabela).join(tab).all() # type: ignore
        return lista
 
    def update(self):
