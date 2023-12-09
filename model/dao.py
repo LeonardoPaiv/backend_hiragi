@@ -36,7 +36,7 @@ class DAO:
        return lista
 
    def readById(self, id):
-       exp = f"self.tabela.{self.idt} == {id}"
+       exp = "self.tabela." + self.idt + "== id"
        obj = self.ses.query(self.tabela).filter(eval(exp)).first() # type: ignore
        return obj
 
@@ -57,9 +57,17 @@ class DAO:
        lista = self.ses.query(self.tabela).filter(eval(exp)).all() # type: ignore
        return lista
    
-   def readAllJoin(self, tab):
-       lista = self.ses.query(self.tabela).join(tab).all() # type: ignore
-       return lista
+   def readOcorrencia(self, idt):
+        exp = "self.tabela." + self.idt + "== idt"
+        lista = self.ses.query(self.tb_ocorrencia, self.tb_tipo_ocorrencia, self.tb_status_ocorrencia, self.tb_atendimento, self.tb_pessoa, self.tb_arquivo)\
+                       .outerjoin(self.tb_atendimento, self.tabela.idt_ocorrencia == self.tb_atendimento.cod_ocorrencia)\
+                       .outerjoin(self.tb_arquivo, self.tb_arquivo.cod_ocorrencia == self.tb_ocorrencia.idt_ocorrencia)\
+                       .outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia)\
+                       .outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia)\
+                       .outerjoin(self.tb_pessoa, self.tb_atendimento.cod_pessoa == self.tb_pessoa.idt_pessoa)\
+                       .filter(eval(exp))\
+                       .all()
+        return lista # 0 3 5
 
    def update(self):
        self.ses.commit()

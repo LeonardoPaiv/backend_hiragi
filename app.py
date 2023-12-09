@@ -158,6 +158,62 @@ def consultas():
             json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "Tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
         return jsonify(json)
 
+@app.route("/consultas/<int:idt>", methods=['GET'])
+@login_required
+def consulta(idt):
+    
+    dao = DAO("tb_ocorrencia")
+    
+    lista = dao.readOcorrencia(idt) 
+    print(lista)
+    if lista[0][0] != None and lista[0][3] != None and lista[0][5] != None:
+        return jsonify({
+            "idt_ocorrencia": lista[0][0].idt_ocorrencia,
+            "data_ocorrencia": lista[0][0].data_ocorrencia,
+            "cep_ocorrencia": lista[0][0].cep_ocorrencia,
+            "tipo_ocorrencia": lista[0][1].nme_tipo_ocorrencia,
+            "dsc_ocorrencia": lista[0][0].dsc_ocorrencia,
+            "arquivo": {
+                "idt_arquivo": lista[0][5].idt_arquivo,
+                "nme_arquivo": lista[0][5].nme_arquivo,
+                "path_arquivo": lista[0][5].arquivo,
+                "formato_arquivo": lista[0][5].formato_arquivo
+            },
+            "status_ocorrencia": lista[0][2].nme_status_ocorrencia,
+            "data_inicio_atendimento": lista[0][3].data_inicial_atendimento,
+            "data_inicio_atendimento": lista[0][3].data_final_atendimento,
+            "descricao_atendimento": lista[0][3].dsc_atendimento
+        })
+    elif lista[0][0] != None and lista[0][3] != None:
+        return jsonify({
+            "idt_ocorrencia": lista[0][0].idt_ocorrencia,
+            "data_ocorrencia": lista[0][0].data_ocorrencia,
+            "cep_ocorrencia": lista[0][0].cep_ocorrencia,
+            "tipo_ocorrencia": lista[0][1].nme_tipo_ocorrencia,
+            "dsc_ocorrencia": lista[0][0].dsc_ocorrencia,
+            "status_ocorrencia": lista[0][2].nme_status_ocorrencia,
+            "data_inicio_atendimento": lista[0][3].data_inicial_atendimento,
+            "data_inicio_atendimento": lista[0][3].data_final_atendimento,
+            "descricao_atendimento": lista[0][3].dsc_atendimento
+        })
+    elif lista[0][0] != None and lista[0][5] != None:
+        return jsonify({
+            "idt_ocorrencia": lista[0][0].idt_ocorrencia,
+            "data_ocorrencia": lista[0][0].data_ocorrencia,
+            "cep_ocorrencia": lista[0][0].cep_ocorrencia,
+            "tipo_ocorrencia": lista[0][1].nme_tipo_ocorrencia,
+            "dsc_ocorrencia": lista[0][0].dsc_ocorrencia,
+            "arquivo": {
+                "idt_arquivo": lista[0][5].idt_arquivo,
+                "nme_arquivo": lista[0][5].nme_arquivo,
+                "path_arquivo": lista[0][5].arquivo,
+                "formato_arquivo": lista[0][5].formato_arquivo,
+            },
+            "status_ocorrencia": lista[0][2].nme_status_ocorrencia
+        })
+
+    return jsonify(f"nao foi possivel encontra a ocorrencia: {idt}")
+
 @app.route("/criar_ocorrencia", methods=['POST'])
 @login_required
 def criar_ocorrencia():
@@ -197,9 +253,8 @@ def criar_ocorrencia():
 
     file = request.files["file"]
     if file:
-        pomba = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename)) # type: ignore
-        file_path = os.path.join("files/", secure_filename(file.filename))# type: ignore
-        file.save(file_path) # type: ignore
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename)) # type: ignore
+        file.save(file_path) 
 
         daoArquivo = DAO("tb_arquivo")
         arquivo = daoArquivo.tb_arquivo()
