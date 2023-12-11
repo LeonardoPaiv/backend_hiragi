@@ -244,7 +244,7 @@ def criar_ocorrencia():
 
     ocorrencia.data_ocorrencia = datetime.datetime.now()
     
-    ocorrencia.cep_ocorrencia = request.form["cep"]
+    ocorrencia.cep_ocorrencia = data["cep"] # type: ignore
     if len(str(ocorrencia.cep_ocorrencia)) != 8:
         return jsonify("Cep invalido. Padrao aceito: XXXXXXXX")
 
