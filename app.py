@@ -1,7 +1,7 @@
 from model.dao import DAO
 from flask import Flask, request, jsonify, redirect, send_file
 from flask_login import current_user, LoginManager, login_user, logout_user, login_required, UserMixin
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 from PIL import Image
 from werkzeug.utils import secure_filename
 import hashlib
@@ -97,7 +97,6 @@ def index():
         return redirect("/login")
 
 @app.route("/login", methods=['POST'])
-@cross_origin()
 def login():
 
     data = request.json
@@ -249,7 +248,7 @@ def consulta(idt):
             "data_final_atendimento": lista[0][3].data_final_atendimento,
             "descricao_atendimento": lista[0][3].dsc_atendimento
         })
-    elif lista[0][0] != None and lista[0][5] != None:
+    elif lista[0][0] != None:
         return jsonify({
             "idt_ocorrencia": lista[0][0].idt_ocorrencia,
             "data_ocorrencia": lista[0][0].data_ocorrencia,
