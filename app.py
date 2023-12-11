@@ -1,7 +1,7 @@
 from model.dao import DAO
 from flask import Flask, request, jsonify, redirect, send_file
 from flask_login import current_user, LoginManager, login_user, logout_user, login_required, UserMixin
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from PIL import Image
 from werkzeug.utils import secure_filename
 import hashlib
@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = 'SubiNumPeDePeraPraArrancarUmaPera'
 app.config['UPLOAD_FOLDER'] = 'files/'
 app.config['MAX_CONTENT_LENGHT'] = 10 * 1024 * 1024
-CORS(app, supports_credentials=True, resources={r"/": {"origins": ""}}, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}}, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 app.config['CORS_HEADERS'] = 'Content-Type'
 
 login_manager = LoginManager()
@@ -63,6 +63,7 @@ def index():
         return redirect("/login")
 
 @app.route("/login", methods=['POST'])
+@cross_origin()
 def login():
 
     data = request.json
@@ -136,9 +137,6 @@ def cadastro():
     
 @app.route("/confirmacao")
 def confirmacao():
-    dao = DAO("tb_ocorrencia")
-    lista = dao.readArquivos(8)
-    print(lista)
     return jsonify("Confirmado")
 
 @app.route('/logout', methods=['GET'])
@@ -164,6 +162,25 @@ def consultas():
 def consulta(idt):
     
     dao = DAO("tb_ocorrencia")
+
+    arquivos = []
+    arq = dao.readArquivos(idt)
+
+    for arquivo in arq:
+        with open(arquivo.arquivo) as img:
+            bin = img.read()
+
+        base = base64.b64encode(bin).decode('utf-8') # type: ignore
+
+        json = {
+            "idt_arquivo": arquivo.idt_arquivo,
+            "nme_arquivo": arquivo.nme_arquivo,
+            "base_arquivo": base,
+            "formato_arquivo": arquivo.formato_arquivo
+        }
+
+        arquivos.append(json)
+        
     
     lista = dao.readOcorrencia(idt) 
     if lista[0][0] != None and lista[0][3] != None and lista[0][5] != None:
@@ -173,12 +190,7 @@ def consulta(idt):
             "cep_ocorrencia": lista[0][0].cep_ocorrencia,
             "tipo_ocorrencia": lista[0][1].nme_tipo_ocorrencia,
             "dsc_ocorrencia": lista[0][0].dsc_ocorrencia,
-            "arquivo": {
-                "idt_arquivo": lista[0][5].idt_arquivo,
-                "nme_arquivo": lista[0][5].nme_arquivo,
-                "path_arquivo": fr"{lista[0][5].arquivo}",
-                "formato_arquivo": lista[0][5].formato_arquivo
-            },
+            "arquivo": arquivos,
             "status_ocorrencia": lista[0][2].nme_status_ocorrencia,
             "data_inicio_atendimento": lista[0][3].data_inicial_atendimento,
             "data_inicio_atendimento": lista[0][3].data_final_atendimento,
@@ -203,12 +215,7 @@ def consulta(idt):
             "cep_ocorrencia": lista[0][0].cep_ocorrencia,
             "tipo_ocorrencia": lista[0][1].nme_tipo_ocorrencia,
             "dsc_ocorrencia": lista[0][0].dsc_ocorrencia,
-            "arquivo": {
-                "idt_arquivo": lista[0][5].idt_arquivo,
-                "nme_arquivo": lista[0][5].nme_arquivo,
-                "path_arquivo": lista[0][5].arquivo,
-                "formato_arquivo": lista[0][5].formato_arquivo,
-            },
+            "arquivo": arquivos,
             "status_ocorrencia": lista[0][2].nme_status_ocorrencia
         })
 
@@ -250,37 +257,41 @@ def criar_ocorrencia():
     
     daoOcorrecia.create(ocorrencia)
 
-    file = data.get("files") # type: ignore
-    if file:
-        starter = file.find(',')
-        image_data = file[starter+1:]
-        image_data = bytes(image_data, encoding="ascii")
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename)) # type: ignore
-        im = Image.open(BytesIO(base64.b64decode(image_data)))
-        im.save('image.jpg')
+    files = data.get("files") # type: ignore
+    if files:
+        for i in range(len(files)): # type: ignore
+            starter = files[i].find(',')
+            image_data = files[i][starter+1:]
+            start = files[i].find('/')
+            end = files[i].find(';')
+            formato = files[i][start:end + 1]
+            image_data = bytes(image_data, encoding="ascii")
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"ocorrencia{ocorrencia.idt_ocorrencia}_{i + 1}.{formato}") # type: ignore
+            im = Image.open(BytesIO(base64.b64decode(image_data)))
+            im.save(file_path)
 
-        daoArquivo = DAO("tb_arquivo")
-        arquivo = daoArquivo.tb_arquivo()
+            daoArquivo = DAO("tb_arquivo")
+            arquivo = daoArquivo.tb_arquivo()
 
-        arquivo.nme_arquivo = file.filename
+            arquivo.nme_arquivo = f"ocorrencia{ocorrencia.idt_ocorrencia}.{i + 1}"
 
-        arquivo.arquivo = file_path
+            arquivo.arquivo = file_path
 
-        arquivo.formato_arquivo = file.filename.rsplit('.', 1)[1] # type: ignore
+            arquivo.formato_arquivo = formato # type: ignore
 
-        arquivo.cod_ocorrencia = ocorrencia.idt_ocorrencia
+            arquivo.cod_ocorrencia = ocorrencia.idt_ocorrencia
 
-        daoArquivo.create(arquivo)
+            daoArquivo.create(arquivo)
 
-        return jsonify({
-            "idt": arquivo.idt_arquivo,
-            "nome": arquivo.nme_arquivo,
-            "path": arquivo.arquivo,
-            "formato": arquivo.formato_arquivo,
-            "ocorrencia": arquivo.cod_ocorrencia
-        })
+            return jsonify({
+                "idt": arquivo.idt_arquivo,
+                "nome": arquivo.nme_arquivo,
+                "path": arquivo.arquivo,
+                "formato": arquivo.formato_arquivo,
+                "ocorrencia": arquivo.cod_ocorrencia
+            })
     
-    return jsonify("Sem arquivo")
+    return jsonify("Sem arquivos")
 
 @app.route("/atendimento/<int:idt>", methods=['PUT'])
 @login_required
