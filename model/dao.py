@@ -5,7 +5,7 @@ import pandas as pd
 
 class DAO:
 
-   def __init__(self, tab):
+    def __init__(self, tab):
        # Ligação com o esquema de banco de dados
        engine = create_engine("mysql+mysqlconnector://root:uniceub@localhost/real?charset=utf8mb4")
 
@@ -28,25 +28,25 @@ class DAO:
        self.ses = session_factory()
        # -------------------------------------------------------------------------------------------------
 
-   def create(self, obj):
+    def create(self, obj):
        self.ses.add(obj)
        self.ses.commit()
 
-   def readAll(self):
+    def readAll(self):
        lista = self.ses.query(self.tabela).all()
        return lista
 
-   def readById(self, id):
+    def readById(self, id):
        exp = "self.tabela." + self.idt + "== id"
        obj = self.ses.query(self.tabela).filter(eval(exp)).first() # type: ignore
        return obj
 
-   def readByNme(self, nm):
+    def readByNme(self, nm):
        exp = "self.tabela." + self.nme + ".ilike('%' + nm + '%')"
        lista = self.ses.query(self.tabela).filter(eval(exp)).all() # type: ignore
        return lista
 
-   def readBy(self, campo, oper, valor):
+    def readBy(self, campo, oper, valor):
 
        if oper == "==":
            exp = "self.tabela." + campo + "==valor"
@@ -58,7 +58,7 @@ class DAO:
        lista = self.ses.query(self.tabela).filter(eval(exp)).all() # type: ignore
        return lista
    
-   def readOcorrencia(self, idt):
+    def readOcorrencia(self, idt):
         exp = "self.tabela." + self.idt + "== idt"
         lista = self.ses.query(self.tb_ocorrencia, self.tb_tipo_ocorrencia, self.tb_status_ocorrencia, self.tb_atendimento, self.tb_pessoa)\
                        .outerjoin(self.tb_atendimento, self.tabela.idt_ocorrencia == self.tb_atendimento.cod_ocorrencia)\
@@ -69,21 +69,28 @@ class DAO:
                        .all()
         return lista
    
-   def readArquivos(self, idt):
+    def readArquivos(self, idt):
        lista = self.ses.query(self.tb_arquivo).filter(self.tb_arquivo.cod_ocorrencia == idt).all() # type: ignore
        return lista
+   
+    def readFiltros(self, *filtros):
+       select = ""
+       for filtro in filtros:
+          select += filtro
+       lista = self.ses.query(self.tabela).filter(select).all() # type: ignore
+       return lista
 
-   def update(self):
-       self.ses.commit()
+    def update(self):
+        self.ses.commit()
 
-   def delete(self, obj):
+    def delete(self, obj):
        self.ses.delete(obj)
        self.ses.commit()
 
-   def getSes(self):
+    def getSes(self):
        return self.ses
    
-   def exportToExcel(self, filename, data):
+    def exportToExcel(self, filename, data):
         # Lê todos os dados da tabela
 
         # Converte os dados para um DataFrame do pandas
@@ -94,5 +101,5 @@ class DAO:
         df.to_excel(writer, index=False)
         writer.save() # type: ignore
 
-   def __del__(self):
+    def __del__(self):
        self.ses.close()

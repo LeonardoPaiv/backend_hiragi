@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = 'SubiNumPeDePeraPraArrancarUmaPera'
 app.config['UPLOAD_FOLDER'] = 'files/'
 app.config['MAX_CONTENT_LENGHT'] = 10 * 1024 * 1024
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}}, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+CORS(app, supports_credentials=True, resources={"/*": {"origins": "*"}}, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 app.config['CORS_HEADERS'] = 'Content-Type'
 
 login_manager = LoginManager()
@@ -38,6 +38,40 @@ class User(UserMixin):
 
    def get_id(self):
        return str(self.idt_pessoa)
+
+def filtrar(tipo, status):
+    dao = DAO("tb_ocorrencia")
+    if status == None and tipo == None:
+        lista = dao.readAll()
+        json = []
+        for i in lista:
+            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+
+        return json
+    
+    elif status == None:
+        lista = dao.readFiltros(f"tb_ocorrencia.cod_tipo_ocorrencia == {tipo}")
+        json = []
+        for i in lista:
+            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+
+        return json
+    
+    elif tipo == None:
+        lista = dao.readFiltros(f"tb_ocorrencia.cod_status_ocorrencia == {status}")
+        json = []
+        for i in lista:
+            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+
+        return json
+
+    else:
+        lista = dao.readFiltros(f"tb_ocorrencia.cod_tipo_ocorrencia == {tipo}", f", tb_ocorrencia.cod_status_ocorrencia == {status}")
+        json = []
+        for i in lista:
+            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})   
+
+        return json
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -135,9 +169,18 @@ def cadastro():
     else:
         return jsonify("pomba")
     
-@app.route("/confirmacao")
+@app.route("/consultas/excel")
 def confirmacao():
-    return jsonify("Confirmado")
+    
+    dao = DAO("tb_ocorrencia")
+
+    status = request.args.get("status")
+    tipo = request.args.get("tipo")
+
+    lista = filtrar(tipo, status)
+
+    dao.exportToExcel("consultas.xlsx", lista)
+    return send_file("consultas.xlsx")
 
 @app.route('/logout', methods=['GET'])
 def logout():
@@ -145,17 +188,15 @@ def logout():
    return jsonify(**{'result': 200,
                      'data': {'message': 'logout success'}})
 
-@app.route("/consultas", methods=['GET'])
+@app.route("/consultas", methods=['GET']) # type: ignore
 @login_required
 def consultas():
-    dao = DAO("tb_ocorrencia")
     
-    lista = dao.readAll()
-    json = []
-    for i in lista:
-        json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+    status = request.args.get("status")
+    tipo = request.args.get("tipo")
 
-    return jsonify(json)
+    return jsonify(filtrar(tipo, status))
+    
 
 @app.route("/consultas/<int:idt>", methods=['GET'])
 @login_required
@@ -183,7 +224,7 @@ def consulta(idt):
         
     
     lista = dao.readOcorrencia(idt) 
-    if lista[0][0] != None and lista[0][3] != None and lista[0][5] != None:
+    if lista[0][0] != None and lista[0][3] != None:
         return jsonify({
             "idt_ocorrencia": lista[0][0].idt_ocorrencia,
             "data_ocorrencia": lista[0][0].data_ocorrencia,
