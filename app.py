@@ -2,13 +2,14 @@ from model.dao import DAO
 from flask import Flask, request, jsonify, redirect, send_file
 from flask_login import current_user, LoginManager, login_user, logout_user, login_required, UserMixin
 from flask_cors import CORS
+from PIL import Image
 from werkzeug.utils import secure_filename
 import hashlib
 import re
 import datetime
 import os
 import base64
-import io
+from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = 'SubiNumPeDePeraPraArrancarUmaPera'
@@ -61,7 +62,7 @@ def index():
     else:
         return redirect("/login")
 
-@app.route("/login", methods=['GET'])
+@app.route("/login", methods=['POST'])
 def login():
 
     data = request.json
@@ -135,6 +136,9 @@ def cadastro():
     
 @app.route("/confirmacao")
 def confirmacao():
+    dao = DAO("tb_ocorrencia")
+    lista = dao.readArquivos(8)
+    print(lista)
     return jsonify("Confirmado")
 
 @app.route('/logout', methods=['GET'])
@@ -147,16 +151,11 @@ def logout():
 @login_required
 def consultas():
     dao = DAO("tb_ocorrencia")
-
-    data = request.json
     
     lista = dao.readAll()
     json = []
     for i in lista:
         json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
-    if data["excel"]: # type: ignore
-        dao.exportToExcel("consultas.xlsx", lista)
-        return send_file("consultas.xlsx")
 
     return jsonify(json)
 
@@ -251,13 +250,14 @@ def criar_ocorrencia():
     
     daoOcorrecia.create(ocorrencia)
 
-    file = data.get("file") # type: ignore
+    file = data.get("files") # type: ignore
     if file:
-        imagem_binaria = base64.b64decode(file)
-        with open('imagem_recebida.png', 'wb') as img_file:
-                   img_file.write(imagem_binaria)
+        starter = file.find(',')
+        image_data = file[starter+1:]
+        image_data = bytes(image_data, encoding="ascii")
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename)) # type: ignore
-        file.save(file_path) 
+        im = Image.open(BytesIO(base64.b64decode(image_data)))
+        im.save('image.jpg')
 
         daoArquivo = DAO("tb_arquivo")
         arquivo = daoArquivo.tb_arquivo()
