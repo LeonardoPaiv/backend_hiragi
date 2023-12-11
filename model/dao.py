@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
+import pandas as pd
 
 class DAO:
 
@@ -59,15 +60,18 @@ class DAO:
    
    def readOcorrencia(self, idt):
         exp = "self.tabela." + self.idt + "== idt"
-        lista = self.ses.query(self.tb_ocorrencia, self.tb_tipo_ocorrencia, self.tb_status_ocorrencia, self.tb_atendimento, self.tb_pessoa, self.tb_arquivo)\
+        lista = self.ses.query(self.tb_ocorrencia, self.tb_tipo_ocorrencia, self.tb_status_ocorrencia, self.tb_atendimento, self.tb_pessoa)\
                        .outerjoin(self.tb_atendimento, self.tabela.idt_ocorrencia == self.tb_atendimento.cod_ocorrencia)\
-                       .outerjoin(self.tb_arquivo, self.tb_arquivo.cod_ocorrencia == self.tb_ocorrencia.idt_ocorrencia)\
                        .outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia)\
                        .outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia)\
                        .outerjoin(self.tb_pessoa, self.tb_atendimento.cod_pessoa == self.tb_pessoa.idt_pessoa)\
                        .filter(eval(exp))\
                        .all()
-        return lista # 0 3 5
+        return lista
+   
+   def readArquivos(self, idt):
+       lista = self.ses.query(self.tb_arquivo).filter(self.tb_arquivo.cod_ocorrencia == idt).all() # type: ignore
+       return lista
 
    def update(self):
        self.ses.commit()
@@ -78,6 +82,17 @@ class DAO:
 
    def getSes(self):
        return self.ses
+   
+   def exportToExcel(self, filename, data):
+        # Lê todos os dados da tabela
+
+        # Converte os dados para um DataFrame do pandas
+        df = pd.DataFrame(data)
+
+        # Cria um arquivo Excel usando o openpyxl
+        writer = pd.ExcelWriter(filename, engine='openpyxl')
+        df.to_excel(writer, index=False)
+        writer.save() # type: ignore
 
    def __del__(self):
        self.ses.close()

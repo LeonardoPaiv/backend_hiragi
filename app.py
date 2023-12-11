@@ -1,5 +1,5 @@
 from model.dao import DAO
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify, redirect, send_file
 from flask_login import current_user, LoginManager, login_user, logout_user, login_required, UserMixin
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -7,12 +7,15 @@ import hashlib
 import re
 import datetime
 import os
+import base64
+import io
 
 app = Flask(__name__)
 app.secret_key = 'SubiNumPeDePeraPraArrancarUmaPera'
 app.config['UPLOAD_FOLDER'] = 'files/'
 app.config['MAX_CONTENT_LENGHT'] = 10 * 1024 * 1024
-CORS(app)
+CORS(app, supports_credentials=True, resources={r"/": {"origins": ""}}, methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -60,8 +63,11 @@ def index():
 
 @app.route("/login", methods=['GET'])
 def login():
-    email = request.args.get('email', default="", type=str)
-    senha = request.args.get('senha', default="", type=str)
+
+    data = request.json
+
+    email = data['email'] # type: ignore
+    senha = data['senha'] # type: ignore
 
     dao = DAO("tb_pessoa")
 
@@ -89,26 +95,27 @@ def cadastro():
     if request.method == 'POST':
         dao = DAO("tb_pessoa")
 
-        nome = request.form.get("nome")
+        data = request.json
 
-        cpf = str(request.form.get("cpf"))
-        print(len(cpf))
+        nome = data["nome"] # type: ignore
+
+        cpf = data["cpf"] # type: ignore
         if len(cpf) != 11:
             return jsonify("Cpf invalido. Padrao aceito: XXXXXXXXXXX")
         if len(dao.readBy("cpf_pessoa", "==", cpf)) != 0:
             return jsonify("cpf ja utilizado")
 
-        email = request.form.get("email")
+        email = data["email"] # type: ignore
         if not re.match(r".+@.+\..+", str(email)):
             return jsonify("Email invalido. Padrão aceito: x@y.z")
 
-        senha = request.form.get("senha")
+        senha = data["senha"] # type: ignore
         if len(str(senha)) < 4:
             return jsonify("Senha minima de 4 caracteres")
 
-        senha_confirmada = request.form.get("senha_confirmada")
+        senha_confirmada = data["senha_confirmada"] # type: ignore
 
-        tipo = request.form.get("tipo")
+        tipo = data["tipo"] # type: ignore
 
         if senha == senha_confirmada:
             compilacao = hashlib.sha1(str(senha).encode("utf-8")).hexdigest()
@@ -128,10 +135,6 @@ def cadastro():
     
 @app.route("/confirmacao")
 def confirmacao():
-    dao = DAO("tb_tipo_ocorrencia")
-    lista = dao.readAll()
-    for i in lista:
-        print(i.nme_tipo_ocorrencia)
     return jsonify("Confirmado")
 
 @app.route('/logout', methods=['GET'])
@@ -144,19 +147,18 @@ def logout():
 @login_required
 def consultas():
     dao = DAO("tb_ocorrencia")
-    usuario = current_user
-    if usuario.tipo_pessoa == 1: # type: ignore
-        lista = dao.readAll()
-        json = []
-        for i in lista:
-            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "Tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
-        return jsonify(json)
-    else:
-        lista = dao.readBy("cod_pessoa", "==", usuario.idt_pessoa) # type: ignore
-        json = []
-        for i in lista:
-            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "Tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
-        return jsonify(json)
+
+    data = request.json
+    
+    lista = dao.readAll()
+    json = []
+    for i in lista:
+        json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+    if data["excel"]: # type: ignore
+        dao.exportToExcel("consultas.xlsx", lista)
+        return send_file("consultas.xlsx")
+
+    return jsonify(json)
 
 @app.route("/consultas/<int:idt>", methods=['GET'])
 @login_required
@@ -165,7 +167,6 @@ def consulta(idt):
     dao = DAO("tb_ocorrencia")
     
     lista = dao.readOcorrencia(idt) 
-    print(lista)
     if lista[0][0] != None and lista[0][3] != None and lista[0][5] != None:
         return jsonify({
             "idt_ocorrencia": lista[0][0].idt_ocorrencia,
@@ -176,7 +177,7 @@ def consulta(idt):
             "arquivo": {
                 "idt_arquivo": lista[0][5].idt_arquivo,
                 "nme_arquivo": lista[0][5].nme_arquivo,
-                "path_arquivo": lista[0][5].arquivo,
+                "path_arquivo": fr"{lista[0][5].arquivo}",
                 "formato_arquivo": lista[0][5].formato_arquivo
             },
             "status_ocorrencia": lista[0][2].nme_status_ocorrencia,
@@ -193,7 +194,7 @@ def consulta(idt):
             "dsc_ocorrencia": lista[0][0].dsc_ocorrencia,
             "status_ocorrencia": lista[0][2].nme_status_ocorrencia,
             "data_inicio_atendimento": lista[0][3].data_inicial_atendimento,
-            "data_inicio_atendimento": lista[0][3].data_final_atendimento,
+            "data_final_atendimento": lista[0][3].data_final_atendimento,
             "descricao_atendimento": lista[0][3].dsc_atendimento
         })
     elif lista[0][0] != None and lista[0][5] != None:
@@ -231,28 +232,30 @@ def criar_ocorrencia():
     # if not re.match(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})", str(ocorrencia.data_ocorrencia)):
     #     return jsonify("Data invalida. Padrão aceito: AAAA-MM-DD HH:MM:SS")
 
-    ocorrencia.nme_ocorrencia = request.form.get("nome")
+    data = request.json
+
+    ocorrencia.nme_ocorrencia = data["nome"] # type: ignore
 
     ocorrencia.data_ocorrencia = datetime.datetime.now()
     
-    ocorrencia.cep_ocorrencia = request.form.get("cep")
+    ocorrencia.cep_ocorrencia = request.form["cep"]
     if len(str(ocorrencia.cep_ocorrencia)) != 8:
         return jsonify("Cep invalido. Padrao aceito: XXXXXXXX")
 
-    ocorrencia.dsc_ocorrencia = request.form.get("descricao")
+    ocorrencia.dsc_ocorrencia = data["descricao"] # type: ignore
 
-    ocorrencia.cod_tipo_ocorrencia = request.form.get("tipo")
-    # if tipo not in tipos:
-    #     return jsonify(f"Tipos aceitos: {tipos}")
+    ocorrencia.cod_tipo_ocorrencia = data["tipo"] # type: ignore
     
-    # ocorrencia.cod_tipo_ocorrencia = daoTipo.readByNme(tipo)[0].idt_tipo_ocorrencia
     ocorrencia.cod_pessoa = current_user.idt_pessoa # type: ignore
     ocorrencia.cod_status_ocorrencia = 1
     
     daoOcorrecia.create(ocorrencia)
 
-    file = request.files["file"]
+    file = data.get("file") # type: ignore
     if file:
+        imagem_binaria = base64.b64decode(file)
+        with open('imagem_recebida.png', 'wb') as img_file:
+                   img_file.write(imagem_binaria)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename)) # type: ignore
         file.save(file_path) 
 
@@ -279,6 +282,43 @@ def criar_ocorrencia():
     
     return jsonify("Sem arquivo")
 
+@app.route("/atendimento/<int:idt>", methods=['PUT'])
+@login_required
+def atendimento(idt):
 
+    daoOcorrencia = DAO("tb_ocorrencia")
+    tem = daoOcorrencia.readById(idt) 
+    if tem:
+        data = request.json
+
+        daoAtendimento = DAO("tb_atendimento")
+        oc = daoOcorrencia.readById(idt)
+        lista = daoAtendimento.readBy("cod_ocorrencia", "==", idt)
+        if len(lista) == 0:
+            atendimento = daoAtendimento.tb_atendimento()
+
+            atendimento.cod_ocorrencia = idt
+            atendimento.dsc_atendimento = data["descricao"] # type: ignore
+            atendimento.cod_pessoa = current_user.idt_pessoa # type: ignore
+            atendimento.data_inicial_atendimento = datetime.datetime.now()
+            oc.cod_status_ocorrencia = data["status"] # type: ignore
+            if data["status"] == 3: # type: ignore
+                atendimento.data_final_atendimento = datetime.datetime.now()
+
+            daoAtendimento.create(atendimento)
+            daoOcorrencia.update()
+            return jsonify(lista)
+        else:
+            lista[0].cod_pessoa = current_user.idt_pessoa # type: ignore
+            atendimento.dsc_atendimento = data["descricao"] # type: ignore
+            oc.cod_status_ocorrencia = data["status"] # type: ignore
+            if data[status] == 3: # type: ignore
+                atendimento.data_final_atendimento = datetime.datetime.now() # type: ignore
+
+        daoOcorrencia.update()
+        daoAtendimento.update()
+        return jsonify("atendido")
+    
+    return jsonify(f"nao foi possivel encontra a ocorrencia: {idt}")
 
 app.run(debug=True, port=5000)
