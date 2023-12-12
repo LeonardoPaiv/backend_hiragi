@@ -171,7 +171,7 @@ def consultas():
     print(lista)
     json = []
     for i in range(len(lista)): # type: ignore
-        json.append({"id": lista[i][0].idt_ocorrencia, "nome": lista[i][0].nme_ocorrencia, "descricao": lista[i][0].dsc_ocorrencia, "data": lista[i][0].data_ocorrencia, "cep": lista[i][0].cep_ocorrencia, "tipo": lista[i][2].nme_tipo_ocorrencia, "status": lista[i][1].nme_status_ocorrencia})
+        json.append({"id": lista[i][0].idt_ocorrencia, "nome": lista[i][0].nme_ocorrencia, "descricao": lista[i][0].dsc_ocorrencia, "data": lista[i][0].data_ocorrencia, "cep": lista[i][0].cep_ocorrencia, "tipo": lista[i][0].cod_tipo_ocorrencia, "status": lista[i][0].cod_status_ocorrencia})
     return json
     
 
