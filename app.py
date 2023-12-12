@@ -207,15 +207,14 @@ def consulta(idt):
     arq = dao.readArquivos(idt)
 
     for arquivo in arq:
-        with open(arquivo.arquivo) as img:
-            bin = img.read()
-
-        base = base64.b64encode(bin).decode('utf-8') # type: ignore
+        with open(arquivo.arquivo, "rb") as img:
+            image_data = img.read()
+            base64_encoded = base64.b64encode(image_data).decode('utf-8')
 
         json = {
             "idt_arquivo": arquivo.idt_arquivo,
             "nme_arquivo": arquivo.nme_arquivo,
-            "base_arquivo": base,
+            "base_arquivo": base64_encoded,
             "formato_arquivo": arquivo.formato_arquivo
         }
 
