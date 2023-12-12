@@ -76,19 +76,19 @@ class DAO:
     def readFiltros(self, status, tipo):
        
         if status == None and tipo == None:
-            lista = self.ses.query(self.tabela).all()
+            lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).all()
             return lista
     
         elif status == None:
-            lista = self.ses.query(self.tabela).filter(self.tabela.cod_tipo_ocorrencia == tipo).all() # type: ignore
+            lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(self.tabela.cod_tipo_ocorrencia == tipo).all() # type: ignore
             return lista
     
         elif tipo == None:
-            lista = self.ses.query(self.tabela).filter(self.tabela.cod_status_ocorrencia == status).all() # type: ignore
+            lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(self.tabela.cod_status_ocorrencia == status).all() # type: ignore
             return lista
 
         else:
-            lista = self.ses.query(self.tabela).filter(and_(self.tabela.cod_tipo_ocorrencia == tipo, self.tabela.cod_status_ocorrencia == status)).all() # type: ignore
+            lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(and_(self.tabela.cod_tipo_ocorrencia == tipo, self.tabela.cod_status_ocorrencia == status)).all() # type: ignore
             return lista
 
     def update(self):
