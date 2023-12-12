@@ -318,6 +318,11 @@ def criar_ocorrencia():
     
     return jsonify("Sem arquivos")
 
+@app.route("/user-admin")
+@login_required
+def adm():
+    return jsonify(current_user.tipo_pessoa) # type: ignore
+
 @app.route("/atendimento/<int:idt>", methods=['PUT'])
 @login_required
 def atendimento(idt):
