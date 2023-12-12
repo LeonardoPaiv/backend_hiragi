@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, and_
+from sqlalchemy import create_engine, and_, or_
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
@@ -80,7 +80,13 @@ class DAO:
             return lista
     
         elif status == None:
-            lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(self.tabela.cod_tipo_ocorrencia == tipo).all() # type: ignore
+            listaTipo = tipo.split(",")
+            exp = f"self.tabela.cod_tipo_ocorrencia == {listaTipo[0]}"
+            if len(listaTipo) > 1:
+                for tip in listaTipo:
+                    exp += f", self.tabela.cod_tipo_ocorrencia == {tip}"
+
+            lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(or_(eval(exp))).all() # type: ignore
             return lista
     
         elif tipo == None:
@@ -88,7 +94,12 @@ class DAO:
             return lista
 
         else:
-            lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(and_(self.tabela.cod_tipo_ocorrencia == tipo, self.tabela.cod_status_ocorrencia == status)).all() # type: ignore
+            listaTipo = tipo.split(",")
+            exp = f"self.tabela.cod_tipo_ocorrencia == {listaTipo[0]}"
+            if len(listaTipo) > 1:
+                for tip in listaTipo:
+                    exp += f", self.tabela.cod_tipo_ocorrencia == {tip}"
+            lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(and_(or_(eval(exp)), self.tabela.cod_status_ocorrencia == status)).all() # type: ignore
             return lista
 
     def update(self):
