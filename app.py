@@ -38,41 +38,7 @@ class User(UserMixin):
 
    def get_id(self):
        return str(self.idt_pessoa)
-
-def filtrar(tipo, status):
-    dao = DAO("tb_ocorrencia")
-    if status == None and tipo == None:
-        lista = dao.readAll()
-        json = []
-        for i in lista:
-            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
-
-        return json
     
-    elif status == None:
-        lista = dao.readFiltros(f"tb_ocorrencia.cod_tipo_ocorrencia == {tipo}")
-        json = []
-        for i in lista:
-            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
-
-        return json
-    
-    elif tipo == None:
-        lista = dao.readFiltros(f"tb_ocorrencia.cod_status_ocorrencia == {status}")
-        json = []
-        for i in lista:
-            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
-
-        return json
-
-    else:
-        lista = dao.readFiltros(f"tb_ocorrencia.cod_tipo_ocorrencia == {tipo}", f", tb_ocorrencia.cod_status_ocorrencia == {status}")
-        json = []
-        for i in lista:
-            json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})   
-
-        return json
-
 @login_manager.user_loader
 def load_user(user_id):
    dao = DAO('tb_pessoa')
@@ -176,7 +142,11 @@ def confirmacao():
     status = request.args.get("status")
     tipo = request.args.get("tipo")
 
-    lista = filtrar(tipo, status)
+    lista = dao.readFiltros(status, tipo)
+    json = []
+    for i in lista: # type: ignore
+        json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+    
 
     dao.exportToExcel("consultas.xlsx", lista)
     return send_file("consultas.xlsx")
@@ -191,10 +161,16 @@ def logout():
 @login_required
 def consultas():
     
+    dao = DAO("tb_ocorrencia")
+
     status = request.args.get("status")
     tipo = request.args.get("tipo")
 
-    return jsonify(filtrar(tipo, status))
+    lista = dao.readFiltros(status, tipo)
+    json = []
+    for i in lista: # type: ignore
+        json.append({"id": i.idt_ocorrencia, "nome": i.nme_ocorrencia, "descricao": i.dsc_ocorrencia, "data": i.data_ocorrencia, "cep": i.cep_ocorrencia, "tipo": i.cod_tipo_ocorrencia, "status": i.cod_status_ocorrencia})
+    return json
     
 
 @app.route("/consultas/<int:idt>", methods=['GET'])

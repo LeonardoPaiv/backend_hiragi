@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, and_
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
@@ -73,12 +73,23 @@ class DAO:
        lista = self.ses.query(self.tb_arquivo).filter(self.tb_arquivo.cod_ocorrencia == idt).all() # type: ignore
        return lista
    
-    def readFiltros(self, *filtros):
-       select = ""
-       for filtro in filtros:
-          select += filtro
-       lista = self.ses.query(self.tabela).filter(select).all() # type: ignore
-       return lista
+    def readFiltros(self, status, tipo):
+       
+        if status == None and tipo == None:
+            lista = self.ses.query(self.tabela).all()
+            return lista
+    
+        elif status == None:
+            lista = self.ses.query(self.tabela).filter(self.tabela.cod_tipo_ocorrencia == tipo).all() # type: ignore
+            return lista
+    
+        elif tipo == None:
+            lista = self.ses.query(self.tabela).filter(self.tabela.cod_status_ocorrencia == status).all() # type: ignore
+            return lista
+
+        else:
+            lista = self.ses.query(self.tabela).filter(and_(self.tabela.cod_tipo_ocorrencia == tipo, self.tabela.cod_status_ocorrencia == status)).all() # type: ignore
+            return lista
 
     def update(self):
         self.ses.commit()
