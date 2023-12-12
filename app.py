@@ -167,11 +167,10 @@ def consultas():
     tipo = request.args.get("tipo")
 
     lista = dao.readFiltros(status, tipo)
-    print(lista)
     json = []
     for i in range(len(lista)): # type: ignore
         json.append({"id": lista[i][0].idt_ocorrencia, "nome": lista[i][0].nme_ocorrencia, "descricao": lista[i][0].dsc_ocorrencia, "data": lista[i][0].data_ocorrencia, "cep": lista[i][0].cep_ocorrencia, "tipo": lista[i][0].cod_tipo_ocorrencia, "status": lista[i][0].cod_status_ocorrencia})
-    return json
+    return jsonify(json)
     
 
 @app.route("/consultas/<int:idt>", methods=['GET'])
@@ -209,7 +208,7 @@ def consulta(idt):
             "arquivo": arquivos,
             "status_ocorrencia": lista[0][2].nme_status_ocorrencia,
             "data_inicio_atendimento": lista[0][3].data_inicial_atendimento,
-            "data_inicio_atendimento": lista[0][3].data_final_atendimento,
+            "data_final_atendimento": lista[0][3].data_final_atendimento,
             "descricao_atendimento": lista[0][3].dsc_atendimento
         })
     elif lista[0][0] != None and lista[0][3] != None:

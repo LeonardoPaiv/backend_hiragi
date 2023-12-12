@@ -75,16 +75,16 @@ class DAO:
    
     def readFiltros(self, status, tipo):
        
-        if status == None and tipo == None:
+        if status is None and tipo is None:
             lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).all()
             return lista
     
-        elif status == None:
+        elif status is None and tipo is not None:
             tipos = [int(t) for t in tipo.split(',')]
             lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(self.tabela.cod_tipo_ocorrencia.in_(tipos)).all() # type: ignore
             return lista
     
-        elif tipo == None:
+        elif tipo is None and status is not None:
             lista = self.ses.query(self.tabela, self.tb_status_ocorrencia, self.tb_tipo_ocorrencia).outerjoin(self.tb_status_ocorrencia, self.tb_ocorrencia.cod_status_ocorrencia == self.tb_status_ocorrencia.idt_status_ocorrencia).outerjoin(self.tb_tipo_ocorrencia, self.tb_ocorrencia.cod_tipo_ocorrencia == self.tb_tipo_ocorrencia.idt_tipo_ocorrencia).filter(self.tabela.cod_status_ocorrencia == status).all() # type: ignore
             return lista
 
