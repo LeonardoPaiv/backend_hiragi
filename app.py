@@ -345,15 +345,20 @@ def atendimento(idt):
             if data["status"] == 3: # type: ignore
                 atendimento.data_final_atendimento = datetime.datetime.now()
 
+
             daoAtendimento.create(atendimento)
             daoOcorrencia.update()
-            return jsonify(lista)
+            return jsonify("atendimento criado")
         else:
-            lista[0].cod_pessoa = current_user.idt_pessoa # type: ignore
-            lista[0].dsc_atendimento = data["descricao"] # type: ignore
-            oc.cod_status_ocorrencia = data["status"] # type: ignore
-            if data["status"] == 3: # type: ignore
-                lista[0].data_final_atendimento = datetime.datetime.now() # type: ignore
+            if oc.cod_status_ocorrencia != 3:
+                lista[0].cod_pessoa = current_user.idt_pessoa # type: ignore
+                lista[0].dsc_atendimento = data["descricao"] # type: ignore
+                oc.cod_status_ocorrencia = data["status"] # type: ignore
+                if data["status"] == 3: # type: ignore
+                    lista[0].data_final_atendimento = datetime.datetime.now() # type: ignore
+                    
+            else: 
+                return jsonify("atendimento já finalizado")
 
         daoOcorrencia.update()
         daoAtendimento.update()
