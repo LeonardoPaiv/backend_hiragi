@@ -2,6 +2,7 @@ from model.dao import DAO
 from flask import Flask, request, jsonify, redirect, send_file
 from flask_login import current_user, LoginManager, login_user, logout_user, login_required, UserMixin
 from flask_cors import CORS
+from io import BytesIO
 from PIL import Image
 from werkzeug.utils import secure_filename
 import hashlib
@@ -9,7 +10,6 @@ import re
 import datetime
 import os
 import base64
-from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = 'SubiNumPeDePeraPraArrancarUmaPera'
@@ -299,21 +299,31 @@ def criar_ocorrencia():
 
     files = data.get("files") # type: ignore
     if files:
-        for i in range(len(files)): # type: ignore
-            starter = files[i].find(',')
-            image_data = files[i][starter+1:]
-            start = files[i].find('/')
-            end = files[i].find(';')
-            formato = files[i][start:end + 1]
+        i = 1
+        for file in files: # type: ignore
+            # start = files[i].find('/')
+            # end = files[i].find(';')
+            # formato = files[i][start:end + 1]
+            # file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"ocorrencia{ocorrencia.idt_ocorrencia}_{i + 1}.{formato}") # type: ignore
+            # imagem = base64.b64decode(files[i])
+            # with open(f"ocorrencia{ocorrencia.idt_ocorrencia}_{i + 1}.{formato}", 'wb') as img_file:
+            #     img_file.write(imagem)
+            
+            starter = file.find(',')
+            image_data = file[starter + 1:]
             image_data = bytes(image_data, encoding="ascii")
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"ocorrencia{ocorrencia.idt_ocorrencia}_{i + 1}.{formato}") # type: ignore
-            im = Image.open(BytesIO(base64.b64decode(image_data)))
+            start = file.find('/') + 1
+            end = file.find(';')
+            formato = file[start: end]
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"ocorrencia{ocorrencia.idt_ocorrencia}_{i}.{formato}") # type: ignore
+            im = Image.open(BytesIO(base64.b64decode(image_data))).convert('RGB')
             im.save(file_path)
+
 
             daoArquivo = DAO("tb_arquivo")
             arquivo = daoArquivo.tb_arquivo()
 
-            arquivo.nme_arquivo = f"ocorrencia{ocorrencia.idt_ocorrencia}.{i + 1}"
+            arquivo.nme_arquivo = f"ocorrencia{ocorrencia.idt_ocorrencia}.{i}"
 
             arquivo.arquivo = file_path
 
@@ -323,13 +333,11 @@ def criar_ocorrencia():
 
             daoArquivo.create(arquivo)
 
-            return jsonify({
-                "idt": arquivo.idt_arquivo,
-                "nome": arquivo.nme_arquivo,
-                "path": arquivo.arquivo,
-                "formato": arquivo.formato_arquivo,
-                "ocorrencia": arquivo.cod_ocorrencia
-            })
+            i += 1
+
+        return jsonify("arquivos criados")
+
+            
     
     return jsonify("Sem arquivos")
 
