@@ -110,7 +110,7 @@ class DAO:
         # Cria um arquivo Excel usando o openpyxl
         writer = pd.ExcelWriter(filename, engine='openpyxl')
         df.to_excel(writer, index=False)
-        writer.save() # type: ignore
+        writer.close() # type: ignore
 
     def __del__(self):
        self.ses.close()
